@@ -1,7 +1,7 @@
 import initialGuests from './invitados.demo.json' with { type: 'json' };
 
-const demo = initialGuests.map((guest, i) => ({ ...guest, id: String(i + 1), cantidad_entregada: 0, entregado: false, fecha_entrega: null, entregado_por: null }));
-const columns = 'id,nombre,adultos,ninos,cantidad_entregada,entregado,fecha_entrega,entregado_por';
+const demo = initialGuests.map((guest, i) => ({ ...guest, id: String(i + 1), adultos_entregados: 0, ninos_entregados: 0, cantidad_entregada: 0, entregado: false, fecha_entrega: null, entregado_por: null }));
+const columns = 'id,nombre,adultos,ninos,adultos_entregados,ninos_entregados,cantidad_entregada,entregado,fecha_entrega,entregado_por';
 const json = (code, body) => Response.json(body, { status: code, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function supabase(query, options = {}) {
   const key = process.env.SUPABASE_SECRET_KEY;
@@ -46,17 +46,20 @@ export async function handleApi(req, { allowDemo = true } = {}) {
       }
       let body;
       try { body = JSON.parse(raw); } catch { return json(400, { error: 'Solicitud inválida.' }); }
-      if (!body || !Number.isSafeInteger(body.cantidad_entregada) || body.cantidad_entregada < 0 || !Number.isSafeInteger(body.expected) || body.expected < 0) return json(400, { error: 'Estado inválido.' });
+      if (!body || !['adultos', 'ninos'].includes(body.tipo) || !Number.isSafeInteger(body.cantidad) || body.cantidad < 0 || !Number.isSafeInteger(body.expected_adultos) || body.expected_adultos < 0 || !Number.isSafeInteger(body.expected_ninos) || body.expected_ninos < 0) return json(400, { error: 'Estado inválido.' });
       const current = configured
         ? (await supabase(`id=eq.${match[1]}&select=${columns}`))[0]
         : demo.find(row => row.id === match[1]);
       if (!current) return json(404, { error: 'Grupo no encontrado.' });
-      if (body.cantidad_entregada > current.adultos + current.ninos) return json(400, { error: 'La cantidad supera las personas del grupo.' });
-      const patch = { cantidad_entregada: body.cantidad_entregada, entregado: body.cantidad_entregada === current.adultos + current.ninos, fecha_entrega: body.cantidad_entregada ? new Date().toISOString() : null, entregado_por: null };
+      if (body.cantidad > current[body.tipo]) return json(400, { error: 'La cantidad supera las personas del grupo.' });
+      const adults = body.tipo === 'adultos' ? body.cantidad : current.adultos_entregados;
+      const children = body.tipo === 'ninos' ? body.cantidad : current.ninos_entregados;
+      const total = adults + children;
+      const patch = { adultos_entregados: adults, ninos_entregados: children, cantidad_entregada: total, entregado: total === current.adultos + current.ninos, fecha_entrega: total ? new Date().toISOString() : null, entregado_por: null };
       let updated;
       if (configured) {
-        [updated] = await supabase(`id=eq.${match[1]}&cantidad_entregada=eq.${body.expected}&select=${columns}`, { method: 'PATCH', body: JSON.stringify(patch) });
-      } else if (current.cantidad_entregada === body.expected) {
+        [updated] = await supabase(`id=eq.${match[1]}&adultos_entregados=eq.${body.expected_adultos}&ninos_entregados=eq.${body.expected_ninos}&select=${columns}`, { method: 'PATCH', body: JSON.stringify(patch) });
+      } else if (current.adultos_entregados === body.expected_adultos && current.ninos_entregados === body.expected_ninos) {
         updated = Object.assign(current, patch);
       }
       if (!updated) return json(409, { error: 'Esta entrega cambió. Actualiza la lista e inténtalo de nuevo.' });

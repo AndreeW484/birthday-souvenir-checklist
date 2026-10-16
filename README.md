@@ -10,7 +10,7 @@ La base de Supabase ya está configurada. La migración original con nombres rea
 
 ## Uso
 
-La app abre directamente la lista, sin contraseña. Busca un grupo y usa +1 recuerdo para una entrega parcial, Completar para registrar todos los pendientes o −1 recuerdo para corregir una cantidad. Los filtros muestran todos, pendientes (incluye parciales), parciales y completados. El resumen y el progreso cuentan souvenirs, no grupos.
+La app abre directamente la lista, sin contraseña. Cada grupo tiene secciones independientes para adultos y niños. Usa +1 regalo, Completar o −1 regalo dentro del tipo correspondiente. Completar solo entrega los regalos de ese tipo; el otro contador permanece igual. Los filtros muestran todos, pendientes (incluye parciales), parciales y completados. El resumen y el progreso cuentan souvenirs, no grupos.
 
 Se registra la cantidad acumulada y la fecha de la última actualización. No se solicita el nombre de quien entrega. No hay historial individual ni identificación de qué adulto o niño recibió cada souvenir. Actualizar consulta los cambios de otros operadores; el servidor verifica la cantidad previa para evitar sobrescribir una entrega concurrente.
 
@@ -35,3 +35,9 @@ npm test verifica totales, entregas parciales y completas, correcciones, cantida
 El sitio abre sin contraseña y quien tenga acceso al enlace puede consultar y modificar las entregas. La clave de Supabase queda en las funciones. Si faltan las variables, el despliegue responde con un error de configuración en lugar de activar el modo de ejemplo.
 
 La API de Node local y la función de Netlify comparten `api.mjs`. Las pruebas de Netlify simulan Supabase y no alteran entregas reales.
+
+## Separar regalos de adultos y niños
+
+Antes de desplegar esta versión, ejecuta `migrations/002_entregas_por_tipo.sql` en el SQL Editor de Supabase. Agrega contadores independientes y conserva las entregas anteriores cuando su tipo puede deducirse. Si hay entregas parciales en grupos mixtos, la transacción se detiene sin cambiar datos para que se puedan clasificar. El archivo no contiene datos personales. Una segunda ejecución se detiene porque las columnas ya existen.
+
+El resumen muestra entregados y pendientes de adultos y de niños. La actualización verifica ambos contadores anteriores para evitar sobrescribir cambios concurrentes, y la base impide cantidades superiores al número de personas de cada tipo. Una versión antigua de la web no puede cambiar únicamente el total después de la migración; recarga la página tras desplegar.
