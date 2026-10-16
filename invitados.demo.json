@@ -1,0 +1,22 @@
+[
+  {
+    "nombre": "Invitado de ejemplo",
+    "adultos": 1,
+    "ninos": 0
+  },
+  {
+    "nombre": "Grupo de ejemplo A",
+    "adultos": 2,
+    "ninos": 0
+  },
+  {
+    "nombre": "Grupo de ejemplo B",
+    "adultos": 2,
+    "ninos": 1
+  },
+  {
+    "nombre": "Grupo de ejemplo C",
+    "adultos": 2,
+    "ninos": 1
+  }
+]

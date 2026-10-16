@@ -1,0 +1,11 @@
+.env
+node_modules/
+*.log
+
+.env.*
+!.env.example
+.netlify/
+
+# Archivos locales con datos reales, excluidos del repositorio
+migrations/001_grupos.sql
+invitados.json

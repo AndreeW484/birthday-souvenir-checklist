@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Un recuerdo para ti · Cumpleaños</title><meta name="description" content="Checklist de entrega de recuerdos de cumpleaños."><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+  <main>
+    <header><a class="brand" href="/">✳ <span>hecho para celebrar</span></a><span class="pill">UN DÍA ESPECIAL</span></header>
+    <section class="intro"><div><p class="eyebrow">PEQUEÑOS DETALLES, GRANDES SONRISAS</p><h1>Un recuerdo<br>para <em>ti.</em><span class="spark">✧</span></h1><p class="subtitle">Que nadie se vaya sin un pedacito de la fiesta.</p></div><div class="gift" aria-hidden="true"><span class="star one">✧</span><span class="star two">✳</span><div class="bow">୨୧</div><div class="box"><div class="ribbon"></div></div><span class="gift-caption">con mucho cariño ♡</span></div></section>
+    <p id="demo" class="notice" hidden>Vista de ejemplo · Puedes probar las entregas. Datos ficticios para probar la app. Las entregas se reinician al reiniciar el servidor.</p>
+    <p id="people" class="subtitle" aria-live="polite"></p>
+    <section class="stats" aria-label="Resumen de entregas"><div><span>Total</span><strong id="total">—</strong><small>uno por persona</small></div><div><span>Entregados</span><strong id="done">—</strong><small>ya compartidos</small></div><div><span>Pendientes</span><strong id="pending">—</strong><small>por compartir</small></div></section>
+    <section class="checklist"><div class="list-heading"><div><p class="eyebrow">LA LISTA DE LA FIESTA</p><h2>Cada familia cuenta <span>♡</span></h2></div><button id="refresh" class="secondary" type="button">↻ Actualizar</button></div>
+      <div class="progress-label"><span>Avance por souvenirs</span><strong id="percentage">0%</strong></div><progress id="progress" max="100" value="0" aria-label="Porcentaje entregado"></progress>
+      <div class="tools"><input id="search" type="search" placeholder="Buscar familia o persona…" aria-label="Buscar grupo"><div class="filters" aria-label="Filtrar grupos"><button data-filter="all" aria-pressed="true">Todos</button><button data-filter="pending" aria-pressed="false">Pendientes</button><button data-filter="partial" aria-pressed="false">Parciales</button><button data-filter="done" aria-pressed="false">Entregados</button></div></div>
+      <p id="message" role="status" aria-live="polite"></p><div id="list" aria-label="Grupos"></div><p id="result-count" class="result-count"></p>
+    </section><footer>Una fiesta se recuerda por los detalles. <span>✧</span></footer>
+  </main>
+</body></html>
