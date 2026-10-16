@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-let guests = [], filter = 'all', loading = false;
+let guests = [], filter = 'all', activeType = 'adultos', loading = false;
 const busy = new Set();
 async function api(path, options = {}) {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json' } });
@@ -8,20 +8,26 @@ async function api(path, options = {}) {
   return data;
 }
 function render() {
-  const total = guests.reduce((sum, g) => sum + g.adultos + g.ninos, 0);
-  const done = guests.reduce((sum, g) => sum + g.cantidad_entregada, 0);
-  $('people').textContent = `${guests.length} grupos · ${guests.reduce((sum,g)=>sum+g.adultos,0)} adultos · ${guests.reduce((sum,g)=>sum+g.ninos,0)} niños`;
+  const label = activeType === 'adultos' ? 'adultos' : 'niños';
+  const groups = guests.filter(g => g[activeType] > 0);
+  const total = groups.reduce((sum, g) => sum + g[activeType], 0);
+  const done = groups.reduce((sum, g) => sum + g[activeType + '_entregados'], 0);
+  $('people').textContent = groups.length + ' grupos con ' + label;
   $('total').textContent = total; $('done').textContent = done; $('pending').textContent = total - done;
+  $('category-heading').textContent = 'Regalos para ' + label;
+  $('total-label').textContent = activeType === 'adultos' ? 'Adultos' : 'Niños';
+  $('gift-panel').setAttribute('aria-labelledby', 'tab-' + activeType);
+  $('gift-panel').dataset.type = activeType;
   for (const tipo of ['adultos', 'ninos']) {
-    const needed = guests.reduce((sum, g) => sum + g[tipo], 0);
-    const delivered = guests.reduce((sum, g) => sum + g[tipo + '_entregados'], 0);
-    $(tipo + '-total').textContent = needed;
-    $(tipo + '-detail').textContent = `${delivered} entregados · ${needed - delivered} pendientes`;
+    $(tipo + '-count').textContent = guests.reduce((sum, g) => sum + g[tipo], 0);
+    const selected = tipo === activeType;
+    $('tab-' + tipo).setAttribute('aria-selected', String(selected));
+    $('tab-' + tipo).tabIndex = selected ? 0 : -1;
   }
   const percent = total ? Math.round(done / total * 100) : 0;
   $('percentage').textContent = `${percent}%`; $('progress').value = percent;
   const normalize = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
-  const visible = guests.filter(g => normalize(g.nombre).includes(normalize($('search').value)) && (filter === 'all' || (filter === 'done' ? g.entregado : filter === 'partial' ? g.cantidad_entregada > 0 && !g.entregado : !g.entregado))).sort((a,b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+  const visible = groups.filter(g => normalize(g.nombre).includes(normalize($('search').value)) && (filter === 'all' || (filter === 'done' ? g[activeType + '_entregados'] === g[activeType] : filter === 'partial' ? g[activeType + '_entregados'] > 0 && g[activeType + '_entregados'] < g[activeType] : g[activeType + '_entregados'] < g[activeType]))).sort((a,b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
   $('list').replaceChildren();
   for (const guest of visible) {
     const row = document.createElement('div'); row.className = 'guest';
@@ -29,38 +35,27 @@ function render() {
     const info = document.createElement('div'); info.className = 'guest-info';
     const name = document.createElement('div'); name.className = 'guest-name'; name.textContent = guest.nombre || 'Sin nombre';
     const detail = document.createElement('small');
-    detail.textContent = guest.entregado ? '¡Todo entregado! ♡' : `${guest.adultos + guest.ninos - guest.cantidad_entregada} recuerdos pendientes`;
-    row.classList.toggle('is-complete', guest.entregado);
+    const delivered = guest[activeType + '_entregados'];
+    const complete = delivered === guest[activeType];
+    detail.textContent = complete ? '¡Todo entregado! ♡' : `${guest[activeType] - delivered} regalos pendientes`;
+    row.classList.toggle('is-complete', complete);
     const composition = document.createElement('small');
-    composition.textContent = `${guest.adultos} adultos · ${guest.ninos} niños · ${guest.cantidad_entregada}/${guest.adultos + guest.ninos} recuerdos entregados`;
+    composition.textContent = `${delivered} de ${guest[activeType]} regalos para ${label} entregados`;
     info.append(name, composition, detail);
-    const deliveries = document.createElement('div'); deliveries.className = 'gift-types';
-    for (const [tipo, title] of [['adultos', 'Adultos'], ['ninos', 'Niños']]) {
-      const panel = document.createElement('section'); panel.className = 'gift-type ' + tipo;
-      panel.setAttribute('aria-label', 'Regalos para ' + title.toLowerCase() + ' de ' + guest.nombre);
-      const heading = document.createElement('strong'); heading.textContent = 'Regalos para ' + title.toLowerCase();
-      const count = document.createElement('p'); count.className = 'type-count';
-      const delivered = guest[tipo + '_entregados'];
-      count.textContent = guest[tipo] ? delivered + ' de ' + guest[tipo] + ' entregados · Faltan ' + (guest[tipo] - delivered) : 'No hay ' + title.toLowerCase() + ' en este grupo';
-      panel.append(heading, count);
-      if (guest[tipo] > 0) {
-        const actions = document.createElement('div'); actions.className = 'delivery-actions';
-        for (const [label, quantity] of [['+1 regalo', delivered + 1], ['Completar', guest[tipo]], ['−1 regalo', delivered - 1]]) {
-          const button = document.createElement('button'); button.className = 'delivery' + (label === '+1 regalo' ? ' primary' : label === '−1 regalo' ? ' correction' : '');
-          button.textContent = busy.has(guest.id) ? 'Guardando…' : label;
-          button.setAttribute('aria-label', label + ' para ' + title.toLowerCase() + ' de ' + guest.nombre);
-          button.disabled = busy.size > 0 || loading || quantity < 0 || quantity > guest[tipo] || quantity === delivered;
-          button.addEventListener('click', () => toggle(guest, tipo, quantity));
-          actions.append(button);
-        }
-        panel.append(actions);
-      }
-      deliveries.append(panel);
+    const tipo = activeType;
+    const actions = document.createElement('div'); actions.className = 'delivery-actions';
+    for (const [text, quantity] of [['+1 regalo', delivered + 1], ['Completar', guest[tipo]], ['−1 regalo', delivered - 1]]) {
+      const button = document.createElement('button'); button.className = 'delivery' + (text === '+1 regalo' ? ' primary' : text === '−1 regalo' ? ' correction' : '');
+      button.textContent = busy.has(guest.id) ? 'Guardando…' : text;
+      button.setAttribute('aria-label', text + ' para ' + label + ' de ' + guest.nombre);
+      button.disabled = busy.size > 0 || loading || quantity < 0 || quantity > guest[tipo] || quantity === delivered;
+      button.addEventListener('click', () => toggle(guest, tipo, quantity));
+      actions.append(button);
     }
-    row.append(avatar, info, deliveries); $('list').append(row);
+    row.append(avatar, info, actions); $('list').append(row);
   }
   if (!visible.length) { const empty = document.createElement('p'); empty.className = 'empty'; empty.textContent = loading ? 'Cargando grupos…' : guests.length ? 'No hay grupos con este filtro.' : 'Todavía no hay grupos en la lista.'; $('list').append(empty); }
-  $('result-count').textContent = `${visible.length} de ${guests.length} grupos`;
+  $('result-count').textContent = `${visible.length} de ${groups.length} grupos con ${label}`;
 }
 async function refresh() {
   if (loading || busy.size) return;
@@ -78,6 +73,21 @@ async function toggle(guest, tipo, quantity) {
     $('message').textContent = `${guest.nombre}: ${updated[tipo + '_entregados']} de ${updated[tipo]} regalos para ${tipo === 'adultos' ? 'adultos' : 'niños'} entregados.`;
   } catch (error) { $('message').textContent = error.message; }
   finally { busy.delete(guest.id); render(); }
+}
+function selectType(tipo) {
+  activeType = tipo; filter = 'all'; $('search').value = ''; $('message').textContent = '';
+  document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === 'all')));
+  render();
+}
+for (const tipo of ['adultos', 'ninos']) {
+  const tab = $('tab-' + tipo);
+  tab.addEventListener('click', () => selectType(tipo));
+  tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 'adultos' : event.key === 'End' ? 'ninos' : tipo === 'adultos' ? 'ninos' : 'adultos';
+    selectType(next); $('tab-' + next).focus();
+  });
 }
 $('search').addEventListener('input', render);
 document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { filter = button.dataset.filter; document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b === button))); render(); }));
